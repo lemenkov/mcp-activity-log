@@ -1,0 +1,16 @@
+[project]
+name = "mcp-activity-log"
+version = "0.1.0"
+description = "MCP server for shared activity logging"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=3.0.0",
+    "aiosqlite>=0.19.0",
+]
+
+[project.scripts]
+mcp-activity-log = "mcp_activity.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,39 @@
+[Unit]
+Description=Activity Log MCP Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=mcp-activity
+WorkingDirectory=/opt/mcp-servers/activity-log
+ExecStart=/opt/mcp-servers/activity-log/venv/bin/mcp-activity-log \
+  --host 127.0.0.1 \
+  --port 8802 \
+  --db-path /var/lib/mcp-activity/activity.db
+Restart=always
+RestartSec=3
+
+# Full security hardening
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Read-only filesystem except for state directory
+ReadOnlyPaths=/opt/mcp-servers/activity-log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,1 +1,1 @@
-# mcp-activity
+# mcp-activity-log
