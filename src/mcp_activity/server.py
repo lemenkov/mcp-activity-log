@@ -11,7 +11,7 @@ mcp = FastMCP("Activity Log MCP Server")
 db = ActivityDB()
 
 
-@mcp.tool()
+@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "destructiveHint": False})
 async def log_activity(
     message: str,
     source: str = "web",
@@ -31,7 +31,7 @@ async def log_activity(
     return f"Activity logged successfully (ID: {entry_id})"
 
 
-@mcp.tool()
+@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True})
 async def get_activities(
     date_filter: str | None = None,
     category: str | None = None,
@@ -70,7 +70,7 @@ async def get_activities(
     return response
 
 
-@mcp.tool()
+@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True})
 async def generate_report(
     date_filter: str = "today",
     format: str = "summary",
