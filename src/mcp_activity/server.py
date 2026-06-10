@@ -129,6 +129,89 @@ async def generate_report(
     return response
 
 
+@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "openWorldHint": False, "destructiveHint": False})
+async def bus_publish(
+    topic: str,
+    sender: str,
+    body: str,
+    requires_approval: bool = False,
+) -> str:
+    """Publish a message to a topic on the agent bus.
+
+    Args:
+        topic: Topic name (e.g. 'research', 'implementation', 'review')
+        sender: Agent identity (e.g. 'researcher', 'implementer')
+        body: Message content
+        requires_approval: If True, message waits for human approval before delivery
+    """
+    message_id = await db.bus_publish(topic, sender, body, requires_approval)
+    status = "pending approval" if requires_approval else "delivered"
+    return f"Message published (ID: {message_id}, status: {status})"
+
+
+@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False})
+async def bus_poll(
+    topic: str,
+    since_id: int = 0,
+) -> str:
+    """Poll approved messages from a topic on the agent bus.
+
+    Args:
+        topic: Topic name to poll
+        since_id: Only return messages with ID greater than this (for pagination)
+    """
+    messages = await db.bus_poll(topic, since_id)
+    if not messages:
+        return f"No new messages on topic '{topic}' since ID {since_id}"
+
+    response = f"Found {len(messages)} message(s) on topic '{topic}':\n\n"
+    for msg in messages:
+        response += f"**[ID:{msg['id']}]** from {msg['sender']} at {msg['created_at'][:19]}\n"
+        response += f"{msg['body']}\n\n"
+    return response
+
+
+@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False})
+async def bus_pending() -> str:
+    """List all messages pending human approval on the agent bus."""
+    messages = await db.bus_pending()
+    if not messages:
+        return "No messages pending approval."
+
+    response = f"Found {len(messages)} message(s) pending approval:\n\n"
+    for msg in messages:
+        response += f"**[ID:{msg['id']}]** topic={msg['topic']} from={msg['sender']} at {msg['created_at'][:19]}\n"
+        response += f"{msg['body']}\n\n"
+    return response
+
+
+@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "openWorldHint": False, "destructiveHint": False})
+async def bus_approve(message_id: int) -> str:
+    """Approve a pending message on the agent bus, making it visible to subscribers.
+
+    Args:
+        message_id: ID of the message to approve
+    """
+    success = await db.bus_approve(message_id)
+    if success:
+        return f"Message {message_id} approved and delivered."
+    return f"Message {message_id} not found or not in pending state."
+
+
+@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "openWorldHint": False, "destructiveHint": False})
+async def bus_reject(message_id: int, reason: str = "") -> str:
+    """Reject a pending message on the agent bus.
+
+    Args:
+        message_id: ID of the message to reject
+        reason: Optional reason for rejection
+    """
+    success = await db.bus_reject(message_id, reason)
+    if success:
+        return f"Message {message_id} rejected."
+    return f"Message {message_id} not found or not in pending state."
+
+
 async def init():
     """Initialize the database."""
     await db.init_db()

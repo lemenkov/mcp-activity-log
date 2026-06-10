@@ -23,6 +23,20 @@ class ActivityDB:
                     tags TEXT
                 )
             """)
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS bus_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    created_at TEXT NOT NULL,
+                    topic TEXT NOT NULL,
+                    sender TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'approved',
+                    rejection_reason TEXT,
+                    approved_at TEXT
+                )
+            """)
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_bus_topic ON bus_messages(topic)")
+            await db.execute("CREATE INDEX IF NOT EXISTS idx_bus_status ON bus_messages(status)")
             await db.commit()
 
     async def add_activity(
@@ -99,3 +113,86 @@ class ActivityDB:
             async with db.execute(query, params) as cursor:
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
+
+    async def bus_publish(
+        self,
+        topic: str,
+        sender: str,
+        body: str,
+        requires_approval: bool = False,
+    ) -> int:
+        """Publish a message to a topic."""
+        status = "pending" if requires_approval else "approved"
+        created_at = datetime.utcnow().isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                """
+                INSERT INTO bus_messages (created_at, topic, sender, body, status)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (created_at, topic, sender, body, status)
+            )
+            await db.commit()
+            return cursor.lastrowid
+
+    async def bus_poll(
+        self,
+        topic: str,
+        since_id: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Poll approved messages from a topic."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                """
+                SELECT * FROM bus_messages
+                WHERE topic = ? AND status = 'approved' AND id > ?
+                ORDER BY id ASC
+                """,
+                (topic, since_id)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
+
+    async def bus_pending(self) -> List[Dict[str, Any]]:
+        """Get all pending messages awaiting approval."""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                """
+                SELECT * FROM bus_messages
+                WHERE status = 'pending'
+                ORDER BY created_at ASC
+                """
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(row) for row in rows]
+
+    async def bus_approve(self, message_id: int) -> bool:
+        """Approve a pending message."""
+        approved_at = datetime.utcnow().isoformat()
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                UPDATE bus_messages
+                SET status = 'approved', approved_at = ?
+                WHERE id = ? AND status = 'pending'
+                """,
+                (approved_at, message_id)
+            )
+            await db.commit()
+            return db.total_changes > 0
+
+    async def bus_reject(self, message_id: int, reason: str = "") -> bool:
+        """Reject a pending message."""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute(
+                """
+                UPDATE bus_messages
+                SET status = 'rejected', rejection_reason = ?
+                WHERE id = ? AND status = 'pending'
+                """,
+                (reason, message_id)
+            )
+            await db.commit()
+            return db.total_changes > 0
