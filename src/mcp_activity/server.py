@@ -20,7 +20,7 @@ async def log_activity(
 ) -> str:
     """
     Log an activity entry.
-    
+
     Args:
         message: Activity description
         source: Source (cli, web) - defaults to web
@@ -40,7 +40,7 @@ async def get_activities(
 ) -> str:
     """
     Get activity entries with optional filters.
-    
+
     Args:
         date_filter: Filter by date (YYYY-MM-DD format, or 'today')
         category: Filter by category
@@ -50,14 +50,14 @@ async def get_activities(
     # Handle 'today' shortcut
     if date_filter == "today":
         date_filter = date.today().isoformat()
-    
+
     activities = await db.get_activities(date_filter, category, source, limit)
-    
+
     if not activities:
         return "No activities found matching the filters."
-    
+
     response = f"Found {len(activities)} activities:\n\n"
-    
+
     for activity in activities:
         response += f"**[{activity['timestamp'][:19]}]** ({activity['source']})\n"
         if activity['category']:
@@ -66,7 +66,7 @@ async def get_activities(
         if activity['tags']:
             response += f"Tags: {activity['tags']}\n"
         response += "\n"
-    
+
     return response
 
 
@@ -77,22 +77,22 @@ async def generate_report(
 ) -> str:
     """
     Generate a report of activities.
-    
+
     Args:
         date_filter: Date to report on (YYYY-MM-DD or 'today')
         format: Report format ('summary', 'detailed', 'changelog')
     """
     if date_filter == "today":
         date_filter = date.today().isoformat()
-    
+
     activities = await db.get_activities(date=date_filter)
-    
+
     if not activities:
         return f"No activities logged for {date_filter}"
-    
+
     if format == "changelog":
         response = f"# Changelog for {date_filter}\n\n"
-        
+
         # Group by category
         by_category = {}
         for activity in activities:
@@ -100,32 +100,32 @@ async def generate_report(
             if cat not in by_category:
                 by_category[cat] = []
             by_category[cat].append(activity['message'])
-        
+
         for category, messages in by_category.items():
             response += f"## {category}\n"
             for msg in messages:
                 response += f"- {msg}\n"
             response += "\n"
-    
+
     elif format == "summary":
         response = f"# Activity Summary for {date_filter}\n\n"
         response += f"Total activities: {len(activities)}\n\n"
-        
+
         categories = {}
         for activity in activities:
             cat = activity.get('category', 'Other')
             categories[cat] = categories.get(cat, 0) + 1
-        
+
         response += "By category:\n"
         for cat, count in categories.items():
             response += f"- {cat}: {count}\n"
-    
+
     else:  # detailed
         response = f"# Detailed Report for {date_filter}\n\n"
         for activity in activities:
             response += f"**{activity['timestamp'][:19]}** - {activity.get('category', 'N/A')}\n"
             response += f"{activity['message']}\n\n"
-    
+
     return response
 
 
@@ -142,14 +142,14 @@ def main():
     parser.add_argument("--db-path", default="/var/lib/mcp-activity/activity.db",
                        help="Path to SQLite database")
     args = parser.parse_args()
-    
+
     # Set database path
     global db
     db = ActivityDB(db_path=args.db_path)
-    
+
     # Initialize database
     asyncio.run(init())
-    
+
     # Run the server
     mcp.run(transport="http", host=args.host, port=args.port)
 
