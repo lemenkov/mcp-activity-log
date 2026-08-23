@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """SQLite database for activity logs."""
+
 import aiosqlite
 from datetime import datetime
 from typing import List, Dict, Any, Optional
@@ -38,8 +39,12 @@ class ActivityDB:
                     approved_at TEXT
                 )
             """)
-            await db.execute("CREATE INDEX IF NOT EXISTS idx_bus_topic ON bus_messages(topic)")
-            await db.execute("CREATE INDEX IF NOT EXISTS idx_bus_status ON bus_messages(status)")
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_bus_topic ON bus_messages(topic)"
+            )
+            await db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_bus_status ON bus_messages(status)"
+            )
             await db.commit()
 
     async def add_activity(
@@ -69,7 +74,7 @@ class ActivityDB:
                 INSERT INTO activities (timestamp, source, category, message, tags)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (timestamp, source, category, message, tags)
+                (timestamp, source, category, message, tags),
             )
             await db.commit()
             return cursor.lastrowid
@@ -133,7 +138,7 @@ class ActivityDB:
                 INSERT INTO bus_messages (created_at, topic, sender, body, status)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (created_at, topic, sender, body, status)
+                (created_at, topic, sender, body, status),
             )
             await db.commit()
             return cursor.lastrowid
@@ -152,7 +157,7 @@ class ActivityDB:
                 WHERE topic = ? AND status = 'approved' AND id > ?
                 ORDER BY id ASC
                 """,
-                (topic, since_id)
+                (topic, since_id),
             ) as cursor:
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
@@ -161,13 +166,11 @@ class ActivityDB:
         """Get all pending messages awaiting approval."""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            async with db.execute(
-                """
+            async with db.execute("""
                 SELECT * FROM bus_messages
                 WHERE status = 'pending'
                 ORDER BY created_at ASC
-                """
-            ) as cursor:
+                """) as cursor:
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
 
@@ -181,7 +184,7 @@ class ActivityDB:
                 SET status = 'approved', approved_at = ?
                 WHERE id = ? AND status = 'pending'
                 """,
-                (approved_at, message_id)
+                (approved_at, message_id),
             )
             await db.commit()
             return db.total_changes > 0
@@ -195,7 +198,7 @@ class ActivityDB:
                 SET status = 'rejected', rejection_reason = ?
                 WHERE id = ? AND status = 'pending'
                 """,
-                (reason, message_id)
+                (reason, message_id),
             )
             await db.commit()
             return db.total_changes > 0

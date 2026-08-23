@@ -2,19 +2,26 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """MCP server for activity logging."""
+
 import argparse
 import asyncio
 from fastmcp import FastMCP
 from .database import ActivityDB
 from datetime import date
 
-
 # Initialize FastMCP server
 mcp = FastMCP("Activity Log MCP Server")
 db = ActivityDB()
 
 
-@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "openWorldHint": False,  "destructiveHint": True})
+@mcp.tool(
+    tags={"write"},
+    annotations={
+        "readOnlyHint": False,
+        "openWorldHint": False,
+        "destructiveHint": True,
+    },
+)
 async def log_activity(
     message: str,
     source: str = "web",
@@ -34,7 +41,14 @@ async def log_activity(
     return f"Activity logged successfully (ID: {entry_id})"
 
 
-@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False})
+@mcp.tool(
+    tags={"read"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": False,
+        "destructiveHint": False,
+    },
+)
 async def get_activities(
     date_filter: str | None = None,
     category: str | None = None,
@@ -63,17 +77,24 @@ async def get_activities(
 
     for activity in activities:
         response += f"**[{activity['timestamp'][:19]}]** ({activity['source']})\n"
-        if activity['category']:
+        if activity["category"]:
             response += f"Category: {activity['category']}\n"
         response += f"{activity['message']}\n"
-        if activity['tags']:
+        if activity["tags"]:
             response += f"Tags: {activity['tags']}\n"
         response += "\n"
 
     return response
 
 
-@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False})
+@mcp.tool(
+    tags={"read"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": False,
+        "destructiveHint": False,
+    },
+)
 async def generate_report(
     date_filter: str = "today",
     format: str = "summary",
@@ -99,10 +120,10 @@ async def generate_report(
         # Group by category
         by_category = {}
         for activity in activities:
-            cat = activity.get('category', 'Other')
+            cat = activity.get("category", "Other")
             if cat not in by_category:
                 by_category[cat] = []
-            by_category[cat].append(activity['message'])
+            by_category[cat].append(activity["message"])
 
         for category, messages in by_category.items():
             response += f"## {category}\n"
@@ -116,7 +137,7 @@ async def generate_report(
 
         categories = {}
         for activity in activities:
-            cat = activity.get('category', 'Other')
+            cat = activity.get("category", "Other")
             categories[cat] = categories.get(cat, 0) + 1
 
         response += "By category:\n"
@@ -132,7 +153,14 @@ async def generate_report(
     return response
 
 
-@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "openWorldHint": False, "destructiveHint": False})
+@mcp.tool(
+    tags={"write"},
+    annotations={
+        "readOnlyHint": False,
+        "openWorldHint": False,
+        "destructiveHint": False,
+    },
+)
 async def bus_publish(
     topic: str,
     sender: str,
@@ -152,7 +180,14 @@ async def bus_publish(
     return f"Message published (ID: {message_id}, status: {status})"
 
 
-@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False})
+@mcp.tool(
+    tags={"read"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": False,
+        "destructiveHint": False,
+    },
+)
 async def bus_poll(
     topic: str,
     since_id: int = 0,
@@ -169,12 +204,21 @@ async def bus_poll(
 
     response = f"Found {len(messages)} message(s) on topic '{topic}':\n\n"
     for msg in messages:
-        response += f"**[ID:{msg['id']}]** from {msg['sender']} at {msg['created_at'][:19]}\n"
+        response += (
+            f"**[ID:{msg['id']}]** from {msg['sender']} at {msg['created_at'][:19]}\n"
+        )
         response += f"{msg['body']}\n\n"
     return response
 
 
-@mcp.tool(tags={"read"}, annotations={"readOnlyHint": True, "openWorldHint": False, "destructiveHint": False})
+@mcp.tool(
+    tags={"read"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": False,
+        "destructiveHint": False,
+    },
+)
 async def bus_pending() -> str:
     """List all messages pending human approval on the agent bus."""
     messages = await db.bus_pending()
@@ -188,7 +232,14 @@ async def bus_pending() -> str:
     return response
 
 
-@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "openWorldHint": False, "destructiveHint": False})
+@mcp.tool(
+    tags={"write"},
+    annotations={
+        "readOnlyHint": False,
+        "openWorldHint": False,
+        "destructiveHint": False,
+    },
+)
 async def bus_approve(message_id: int) -> str:
     """Approve a pending message on the agent bus, making it visible to subscribers.
 
@@ -201,7 +252,14 @@ async def bus_approve(message_id: int) -> str:
     return f"Message {message_id} not found or not in pending state."
 
 
-@mcp.tool(tags={"write"}, annotations={"readOnlyHint": False, "openWorldHint": False, "destructiveHint": False})
+@mcp.tool(
+    tags={"write"},
+    annotations={
+        "readOnlyHint": False,
+        "openWorldHint": False,
+        "destructiveHint": False,
+    },
+)
 async def bus_reject(message_id: int, reason: str = "") -> str:
     """Reject a pending message on the agent bus.
 
@@ -225,8 +283,11 @@ def main():
     parser = argparse.ArgumentParser(description="Activity Log MCP Server")
     parser.add_argument("--host", default="127.0.0.1", help="Host to listen on")
     parser.add_argument("--port", type=int, default=8802, help="Port to listen on")
-    parser.add_argument("--db-path", default="/var/lib/mcp-activity/activity.db",
-                       help="Path to SQLite database")
+    parser.add_argument(
+        "--db-path",
+        default="/var/lib/mcp-activity/activity.db",
+        help="Path to SQLite database",
+    )
     args = parser.parse_args()
 
     # Set database path
