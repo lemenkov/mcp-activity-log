@@ -5,9 +5,11 @@
 
 import argparse
 import asyncio
-from fastmcp import FastMCP
-from .database import ActivityDB
 from datetime import date
+
+from fastmcp import FastMCP
+
+from .database import ActivityDB
 
 # Initialize FastMCP server
 mcp = FastMCP("Activity Log MCP Server")

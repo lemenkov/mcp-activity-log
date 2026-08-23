@@ -3,9 +3,10 @@
 
 """SQLite database for activity logs."""
 
-import aiosqlite
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import Any
+
+import aiosqlite
 
 
 class ActivityDB:
@@ -51,8 +52,8 @@ class ActivityDB:
         self,
         message: str,
         source: str = "web",
-        category: Optional[str] = None,
-        tags: Optional[str] = None,
+        category: str | None = None,
+        tags: str | None = None,
     ) -> int:
         """
         Add an activity entry.
@@ -81,11 +82,11 @@ class ActivityDB:
 
     async def get_activities(
         self,
-        date: Optional[str] = None,
-        category: Optional[str] = None,
-        source: Optional[str] = None,
+        date: str | None = None,
+        category: str | None = None,
+        source: str | None = None,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get activity entries with optional filters.
 
@@ -147,7 +148,7 @@ class ActivityDB:
         self,
         topic: str,
         since_id: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Poll approved messages from a topic."""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
@@ -162,7 +163,7 @@ class ActivityDB:
                 rows = await cursor.fetchall()
                 return [dict(row) for row in rows]
 
-    async def bus_pending(self) -> List[Dict[str, Any]]:
+    async def bus_pending(self) -> list[dict[str, Any]]:
         """Get all pending messages awaiting approval."""
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
