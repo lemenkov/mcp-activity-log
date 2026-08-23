@@ -3,7 +3,7 @@
 
 """SQLite database for activity logs."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import aiosqlite
@@ -67,7 +67,7 @@ class ActivityDB:
         Returns:
             ID of the created entry
         """
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
@@ -132,7 +132,7 @@ class ActivityDB:
     ) -> int:
         """Publish a message to a topic."""
         status = "pending" if requires_approval else "approved"
-        created_at = datetime.utcnow().isoformat()
+        created_at = datetime.now(UTC).isoformat()
         async with aiosqlite.connect(self.db_path) as db:
             cursor = await db.execute(
                 """
@@ -177,7 +177,7 @@ class ActivityDB:
 
     async def bus_approve(self, message_id: int) -> bool:
         """Approve a pending message."""
-        approved_at = datetime.utcnow().isoformat()
+        approved_at = datetime.now(UTC).isoformat()
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute(
                 """

@@ -5,7 +5,7 @@
 
 import argparse
 import asyncio
-from datetime import date
+from datetime import UTC, datetime
 
 from fastmcp import FastMCP
 
@@ -68,7 +68,7 @@ async def get_activities(
     """
     # Handle 'today' shortcut
     if date_filter == "today":
-        date_filter = date.today().isoformat()
+        date_filter = datetime.now(UTC).date().isoformat()
 
     activities = await db.get_activities(date_filter, category, source, limit)
 
@@ -109,7 +109,7 @@ async def generate_report(
         format: Report format ('summary', 'detailed', 'changelog')
     """
     if date_filter == "today":
-        date_filter = date.today().isoformat()
+        date_filter = datetime.now(UTC).date().isoformat()
 
     activities = await db.get_activities(date=date_filter)
 
